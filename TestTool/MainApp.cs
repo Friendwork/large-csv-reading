@@ -23,6 +23,9 @@ namespace TestTool
             InitializeComponent();
             GridViewData.DoubleBuffered(true);
             AllowDrop = true;
+
+            openFileDialog1.FileOk += OpenFileDialog1_FileOk;
+            openFileDialog2.FileOk += OpenFileDialog2_FileOk;
         }
 
         #region READ FILE
@@ -113,15 +116,25 @@ namespace TestTool
             }
         }
 
-        #endregion
-
         private async void MainApp_DragDrop(object sender, DragEventArgs e)
         {
-            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-            TxtFile.Text = files[0];
-            currentPage = 1;
-            readFileLines();
-            await loadReadFileData();
+            if (TabControl.SelectedTab == MainTab)
+            {
+                string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                TxtFile.Text = files[0];
+                currentPage = 1;
+                readFileLines();
+                await loadReadFileData();
+            }
+            else
+            {
+                string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                TxtFile1.Text = files[0];
+                if(files.Length > 1)
+                {
+                    TxtFile2.Text = files[1];
+                }
+            }
         }
 
         private void MainApp_DragEnter(object sender, DragEventArgs e)
@@ -162,6 +175,63 @@ namespace TestTool
         {
             currentPage = int.Parse(TxtPage.Text);
             await loadReadFileData();
+        }
+
+        #endregion
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            openFileDialog1.ShowDialog();
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            openFileDialog2.ShowDialog();
+        }
+
+        private void OpenFileDialog1_FileOk(object sender, CancelEventArgs e)
+        {
+            TxtFile1.Text = openFileDialog1.FileName;
+        }
+
+        private void OpenFileDialog2_FileOk(object sender, CancelEventArgs e)
+        {
+            TxtFile2.Text = openFileDialog2.FileName;
+        }
+
+        CancellationTokenSource source;
+
+        private async void BtnCompare_Click(object sender, EventArgs e)
+        {
+            source = new CancellationTokenSource();
+
+            await Task.Factory.StartNew(() =>
+            {
+                var reader1 = File.OpenText(TxtFile1.Text);
+                var reader2 = File.OpenText(TxtFile2.Text);
+
+                string line1 = null;
+                while ((line1 = reader1.ReadLine()) != null)
+                {
+                    String line2 = reader2.ReadLine();
+                    if (!line1.Equals(line2))
+                    {
+                        TxtOutput.Text += line1 + "\n" + line2 + "==========\n";
+                    }
+                }
+
+                reader1.Close();
+                reader2.Close();
+            }, source.Token);
+        }
+
+        private void BtnStop_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                source.Cancel();
+            }
+            catch { }
         }
     }
 }
